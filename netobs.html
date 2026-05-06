@@ -816,7 +816,8 @@ function askAI(msg) {
       'Content-Type': 'application/json',
       'x-api-key': API_KEY,
       'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-calls': 'true'
+      'anthropic-dangerous-direct-browser-calls': 'true',
+      'anthropic-beta': 'direct-browser-calls-2025-02-05'
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
