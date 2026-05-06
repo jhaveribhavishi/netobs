@@ -6,7 +6,7 @@ NetObs is a browser-based AI network observability dashboard powered by the Clau
 
 No agents. No infrastructure. No $100k contract.
 
-![Status](https://img.shields.io/badge/status-live-brightgreen) ![License](https://img.shields.io/badge/license-MIT-blue) ![Claude](https://img.shields.io/badge/AI-Claude%20API-6366f1)
+![Status](https://img.shields.io/badge/status-live-brightgreen) ![License](https://img.shields.io/badge/license-MIT-blue) ![Version](https://img.shields.io/badge/version-2.0-6366f1) ![Claude](https://img.shields.io/badge/AI-Claude%20API-6366f1)
 
 ---
 
@@ -15,6 +15,19 @@ No agents. No infrastructure. No $100k contract.
 **[→ Open NetObs](https://jhaveribhavishi.github.io/netobs/netobs.html)**
 
 > Requires a free [Anthropic API key](https://console.anthropic.com). Typical cost per session: under $0.05.
+
+---
+
+## Screenshots
+
+### Light Mode — Service Map
+![NetObs Dashboard](dashboard.png)
+
+### Dark Mode
+![NetObs Dark Mode](darkmode.png)
+
+### AI Root Cause Analysis
+![NetObs AI Analysis](AI%20Analysis.png)
 
 ---
 
@@ -36,9 +49,14 @@ NetObs puts an AI that thinks like a senior SRE directly in your incident workfl
 | **Metrics Dashboard** | Latency, error rate, throughput, P99 — 6-hour history with anomaly markers. |
 | **Predictive Risk Scores** | Per-service AI risk scores. Know what breaks before it does. |
 | **Alert Panel** | Severity-ranked alerts with AI root cause tags pre-attached. |
-| **AI Assistant** | Conversational interface powered by Claude. Ask anything in plain English. |
+| **AI Assistant** | Conversational Claude-powered interface with full conversation memory. |
+| **Incident Timeline** | Auto-logged audit trail of every action, AI response, and alert. |
+| **Export Report** | One-click Markdown incident report with full AI conversation log. |
+| **Slack Integration** | Send alerts to Slack with AI root cause pre-attached. |
+| **Prometheus Connector** | Pull live metrics directly from your Prometheus instance. |
+| **Dark Mode** | Full dark/light mode with localStorage persistence. |
 
-### Ask it things like:
+### Ask the AI things like:
 - *"What is the root cause and how do I fix it?"*
 - *"What breaks next if we do nothing?"*
 - *"Give me the exact SQL fix."*
@@ -60,6 +78,8 @@ cd netobs
 python -m http.server 8000
 open http://localhost:8000/netobs.html
 ```
+
+> You must serve via a local server — browsers block API calls from `file://` URLs.
 
 ### Get an API key
 1. Go to [console.anthropic.com](https://console.anthropic.com)
@@ -85,16 +105,18 @@ Anthropic Claude API
 api.anthropic.com
 ```
 
-Direct browser-to-Anthropic calls are blocked by CORS on hosted URLs. The Cloudflare Worker acts as a lightweight proxy. It runs on Cloudflare's free tier — 100,000 requests per day, no credit card required.
+Direct browser-to-Anthropic calls are blocked by CORS on hosted URLs. The Cloudflare Worker acts as a lightweight proxy. Runs on Cloudflare free tier — 100,000 requests per day.
 
 ---
 
 ## Deploy Your Own
 
 **Step 1 — Fork this repo and enable GitHub Pages**
+
 Settings → Pages → Branch: main → / (root) → Save
 
 **Step 2 — Create a Cloudflare Worker**
+
 1. Go to [cloudflare.com](https://cloudflare.com) → sign up free
 2. Compute → Workers → Create Worker → name it `netobs-proxy`
 3. Paste the contents of `worker.js` → Deploy
@@ -108,7 +130,7 @@ fetch('https://netobs-proxy.bhavishij.workers.dev', {
 
 Replace `bhavishij` with your Cloudflare username.
 
-**Step 4 — Push and you're live**
+**Step 4 — Push and you are live**
 
 ---
 
@@ -123,23 +145,42 @@ All demo data is marked with `// DEMO DATA` comments. Replace these sections for
 | `ALERTS` array | Live firing alerts | Alertmanager / PagerDuty |
 | Chart data | Real time-series | Prometheus `/api/v1/query_range` |
 
+### Example: Fetch from Prometheus
+
+```javascript
+async function loadLiveData() {
+  const res = await fetch('http://your-prometheus:9090/api/v1/query?query=up');
+  const data = await res.json();
+  data.data.result.forEach(r => {
+    const id = r.metric.job;
+    if (NODES[id]) {
+      NODES[id].status = r.value[1] === '1' ? 'ok' : 'crit';
+    }
+  });
+  drawTopo();
+}
+```
+
 ---
 
 ## Tech Stack
 
-- **Frontend:** Vanilla HTML/CSS/JS — no framework, no build step
-- **AI:** Anthropic Claude API
-- **Proxy:** Cloudflare Workers (free tier)
-- **Charts:** Chart.js 4.4.1 (CDN)
-- **Hosting:** GitHub Pages (free)
+| Layer | Technology |
+|---|---|
+| Frontend | Vanilla HTML, CSS, JavaScript — no framework, no build step |
+| AI | Anthropic Claude API (`claude-3-5-sonnet-20241022`) |
+| Proxy | Cloudflare Workers (free tier) |
+| Charts | Chart.js 4.4.1 (CDN) |
+| Fonts | Inter (Google Fonts) |
+| Hosting | GitHub Pages (free) |
 
 ---
 
 ## Why This Exists
 
-Enterprise tools (Datadog, Dynatrace) cost $50k–$500k/year, require weeks of setup, and still give you dashboards — not answers. Open source stacks give you flexibility but no causality.
+Enterprise observability tools (Datadog, Dynatrace) cost $50k–$500k/year, require weeks of setup, and still give you dashboards — not answers. Open source stacks give you flexibility but no causality.
 
-NetObs is the missing middle: a zero-infrastructure AI layer on top of whatever monitoring you already have. It doesn't replace your existing tools. It explains them.
+NetObs is the missing middle — a zero-infrastructure AI layer on top of whatever monitoring you already have. It does not replace your existing tools. It explains them.
 
 **Market reality:**
 - Only 4% of organizations have reached full AI operational maturity in observability
@@ -152,25 +193,29 @@ NetObs is the missing middle: a zero-infrastructure AI layer on top of whatever 
 
 ```
 netobs/
-├── netobs.html     ← entire frontend (single file)
-├── worker.js       ← Cloudflare Worker proxy
-└── README.md       ← this file
+├── netobs.html       ← entire frontend (single file)
+├── worker.js         ← Cloudflare Worker proxy
+├── data.json         ← sample data structure
+├── CHANGELOG.md      ← version history
+├── LICENSE           ← MIT
+├── dashboard.png     ← screenshot
+├── darkmode.png      ← screenshot
+├── AI Analysis.png   ← screenshot
+└── README.md         ← this file
 ```
 
 ---
 
 ## Roadmap
 
-- [ ] Prometheus connector
+- [ ] Prometheus connector (UI-based, no code needed)
 - [ ] Datadog API integration
 - [ ] AWS CloudWatch connector
 - [ ] OpenTelemetry trace ingestion
 - [ ] Auto-triggered AI analysis on new critical alerts
-- [ ] Multi-turn conversation memory
-- [ ] Export incident report to PDF
-- [ ] Slack / Teams integration
-- [ ] Dark mode
-- [ ] Mobile layout
+- [ ] Export to PDF
+- [ ] Mobile responsive layout
+- [ ] Multi-environment switcher (prod / staging / dev)
 
 ---
 
@@ -184,9 +229,15 @@ PRs welcome. The highest value contributions are **data source connectors** — 
 
 ---
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for full version history.
+
+---
+
 ## License
 
-MIT — use it, fork it, build on it.
+MIT — use it, fork it, build on it. See [LICENSE](LICENSE).
 
 ---
 
