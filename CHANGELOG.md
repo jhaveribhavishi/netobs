@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.0.0 — May 2026
+- Health check endpoint polling with 30s interval
+- Alert sounds via Web Audio API (toggle on/off)
+- Animated traffic flow dots on service map
+- Node sparkline charts on hover (60-min latency history)
+
 ## v2.0.0 — May 2026
 - Multi-turn AI conversation memory
 - Auto-refresh every 30 seconds  
