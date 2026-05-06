@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>NetObs — AI Network Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; font-family: 'Inter', sans-serif; background: #f8fafc; color: #1e293b; overflow: hidden; font-size: 14px; }
+.app { display: grid; grid-template-columns: 220px 1fr 300px; grid-template-rows: 60px 1fr; height: 100vh; }
+.header { grid-column: 1/-1; display: flex; align-items: center; background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 20px; gap: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.logo { display: flex; align-items: center; gap: 10px; margin-right: 20px; }
+.logo-icon { width: 34px; height: 34px; background: #6366f1; border-radius: 9px; display: flex; align-items: center; justify-content: center; }
+.logo-icon svg { width: 18px; height: 18px; }
+.logo-text { font-size: 16px; font-weight: 700; color: #1e293b; }
+.logo-badge { font-size: 10px; background: #eef2ff; color: #6366f1; padding: 2px 7px; border-radius: 20px; font-weight: 600; }
+.divider { width: 1px; height: 30px; background: #e2e8f0; margin: 0 8px; }
+.stat-chip { display: flex; align-items: center; gap: 7px; padding: 6px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; }
+.stat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.stat-dot.green { background: #10b981; box-shadow: 0 0 0 2px #d1fae5; }
+.stat-dot.amber { background: #f59e0b; box-shadow: 0 0 0 2px #fef3c7; }
+.stat-dot.red   { background: #ef4444; box-shadow: 0 0 0 2px #fee2e2; animation: blink 1.5s ease-in-out infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+.stat-label { font-size: 11px; color: #64748b; font-weight: 500; }
+.stat-value { font-size: 13px; font-weight: 700; }
+.stat-value.green { color: #059669; }
+.stat-value.amber { color: #d97706; }
+.stat-value.red   { color: #dc2626; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.btn { font-family: 'Inter',sans-serif; font-size: 12px; font-weight: 500; padding: 7px 14px; border-radius: 7px; cursor: pointer; transition: all 0.15s; border: 1px solid; }
+.btn-outline { background: white; border-color: #e2e8f0; color: #475569; }
+.btn-outline:hover { background: #f8fafc; border-color: #cbd5e1; }
+.api-btn { display: flex; align-items: center; gap: 6px; }
+.api-dot-btn { width: 7px; height: 7px; border-radius: 50%; background: #ef4444; }
+.api-dot-btn.on { background: #10b981; }
+.sidebar { background: #fff; border-right: 1px solid #e2e8f0; overflow-y: auto; padding: 16px 10px; }
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+.nav-label { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.08em; padding: 0 8px 6px; margin-top: 14px; }
+.nav-label:first-child { margin-top: 0; }
+.nav-item { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-radius: 8px; font-size: 13px; color: #475569; cursor: pointer; transition: all 0.12s; margin-bottom: 2px; }
+.nav-item:hover { background: #f1f5f9; color: #1e293b; }
+.nav-item.active { background: #eef2ff; color: #6366f1; font-weight: 500; }
+.nav-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.nav-count { margin-left: auto; font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 10px; }
+.nc-red   { background: #fee2e2; color: #dc2626; }
+.nc-amber { background: #fef3c7; color: #d97706; }
+.nc-green { background: #d1fae5; color: #059669; }
+.main { display: flex; flex-direction: column; overflow: hidden; background: #f8fafc; }
+.tabs { display: flex; background: #fff; border-bottom: 1px solid #e2e8f0; padding: 0 20px; gap: 4px; }
+.tab { display: flex; align-items: center; gap: 7px; padding: 0 16px; height: 44px; font-size: 13px; font-weight: 500; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.15s; }
+.tab:hover { color: #1e293b; }
+.tab.active { color: #6366f1; border-bottom-color: #6366f1; }
+.panel { display: none; flex: 1; overflow: hidden; flex-direction: column; }
+.panel.active { display: flex; }
+#topo-wrap { flex: 1; position: relative; overflow: hidden; background: radial-gradient(ellipse at 50% 50%, #f0f4ff 0%, #f8fafc 70%); }
+#topo-svg { width: 100%; height: 100%; }
+.topo-hint { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); font-size: 12px; color: #94a3b8; background: white; border: 1px solid #e2e8f0; padding: 5px 14px; border-radius: 20px; pointer-events: none; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.topo-legend { position: absolute; bottom: 14px; right: 14px; display: flex; gap: 12px; background: white; border: 1px solid #e2e8f0; border-radius: 9px; padding: 8px 14px; font-size: 12px; color: #64748b; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+.leg { display: flex; align-items: center; gap: 5px; }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; }
+.node-tooltip { position: absolute; background: white; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; font-size: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); pointer-events: none; display: none; z-index: 20; min-width: 160px; }
+.tt-name { font-weight: 600; font-size: 13px; margin-bottom: 7px; color: #1e293b; }
+.tt-row { display: flex; justify-content: space-between; gap: 20px; padding: 2px 0; color: #64748b; }
+.tt-val { font-weight: 500; color: #1e293b; }
+.metrics-wrap { flex: 1; overflow-y: auto; padding: 20px; }
+.metrics-wrap::-webkit-scrollbar { width: 3px; }
+.metrics-wrap::-webkit-scrollbar-thumb { background: #cbd5e1; }
+.section-title { font-size: 13px; font-weight: 600; color: #1e293b; margin-bottom: 12px; }
+.m-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+.m-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.m-card-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.m-card-label { font-size: 12px; color: #64748b; font-weight: 500; }
+.m-card-icon { width: 28px; height: 28px; border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+.m-card-val { font-size: 26px; font-weight: 700; line-height: 1; margin-bottom: 4px; }
+.m-card-sub { font-size: 11px; color: #94a3b8; display: flex; align-items: center; gap: 4px; }
+.trend-up { color: #dc2626; }
+.trend-dn { color: #059669; }
+.card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.card-title { font-size: 13px; font-weight: 600; color: #1e293b; }
+.card-sub { font-size: 11px; color: #94a3b8; }
+.chart-wrap { height: 160px; }
+.risk-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.risk-label { font-size: 12px; color: #475569; width: 120px; flex-shrink: 0; font-weight: 500; }
+.risk-track { flex: 1; height: 8px; background: #f1f5f9; border-radius: 4px; overflow: hidden; }
+.risk-fill  { height: 100%; border-radius: 4px; }
+.risk-num   { font-size: 12px; font-weight: 700; min-width: 28px; text-align: right; }
+.alerts-wrap { flex: 1; overflow-y: auto; padding: 16px; }
+.alerts-wrap::-webkit-scrollbar { width: 3px; }
+.alerts-wrap::-webkit-scrollbar-thumb { background: #cbd5e1; }
+.alerts-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.alerts-heading { font-size: 14px; font-weight: 600; }
+.alerts-meta { font-size: 12px; color: #94a3b8; }
+.alert-card { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px; margin-bottom: 10px; transition: all 0.15s; border-left: 4px solid; box-shadow: 0 1px 3px rgba(0,0,0,0.04); }
+.alert-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+.alert-card.crit { border-left-color: #ef4444; }
+.alert-card.warn { border-left-color: #f59e0b; }
+.alert-card.info { border-left-color: #3b82f6; }
+.alert-top-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.sev-pill { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.05em; }
+.sev-crit { background: #fee2e2; color: #dc2626; }
+.sev-warn { background: #fef3c7; color: #d97706; }
+.sev-info { background: #dbeafe; color: #2563eb; }
+.alert-title-text { font-size: 13px; font-weight: 600; flex: 1; color: #1e293b; }
+.alert-ago  { font-size: 11px; color: #94a3b8; white-space: nowrap; }
+.alert-desc { font-size: 12px; color: #64748b; line-height: 1.5; margin-bottom: 8px; }
+.ai-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; background: #eef2ff; color: #6366f1; border: 1px solid #c7d2fe; padding: 4px 10px; border-radius: 6px; line-height: 1.4; font-weight: 500; }
+.alert-btns { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.alert-btn { font-family: 'Inter',sans-serif; font-size: 11px; font-weight: 500; padding: 5px 12px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; color: #475569; cursor: pointer; transition: all 0.1s; }
+.alert-btn:hover { background: #f8fafc; color: #1e293b; }
+.alert-btn.primary { background: #6366f1; color: white; border-color: #6366f1; }
+.alert-btn.primary:hover { background: #4f46e5; }
+.ai-panel { background: white; border-left: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; }
+.ai-top { padding: 14px 16px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 9px; flex-shrink: 0; background: #fafbff; }
+.ai-top-icon { width: 32px; height: 32px; background: #eef2ff; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+.ai-title  { font-size: 14px; font-weight: 600; color: #1e293b; }
+.ai-model  { font-size: 10px; color: #94a3b8; background: #f1f5f9; padding: 2px 7px; border-radius: 4px; font-family: monospace; margin-left: auto; }
+.ai-badge  { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px; }
+.ai-badge.ready    { background: #d1fae5; color: #059669; }
+.ai-badge.thinking { background: #fef3c7; color: #d97706; }
+.ai-badge.error    { background: #fee2e2; color: #dc2626; }
+.risk-box { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; flex-shrink: 0; background: #fffbeb; }
+.risk-box-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.risk-box-label { font-size: 11px; font-weight: 600; color: #92400e; text-transform: uppercase; letter-spacing: 0.06em; }
+.risk-box-val   { font-size: 18px; font-weight: 800; color: #d97706; }
+.risk-box-bar   { height: 5px; background: #fde68a; border-radius: 3px; overflow: hidden; margin-bottom: 5px; }
+.risk-box-fill  { height: 100%; width: 68%; background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444); border-radius: 3px; }
+.risk-box-note  { font-size: 11px; color: #92400e; }
+.ai-msgs { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.ai-msgs::-webkit-scrollbar { width: 3px; }
+.ai-msgs::-webkit-scrollbar-thumb { background: #cbd5e1; }
+.msg { animation: msgIn 0.2s ease; }
+@keyframes msgIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+.msg-who { font-size: 10px; font-weight: 600; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+.msg.user  .msg-who { text-align: right; color: #6366f1; }
+.msg.ai    .msg-who { color: #64748b; }
+.msg.err   .msg-who { color: #dc2626; }
+.bubble { font-size: 13px; line-height: 1.6; padding: 10px 13px; border-radius: 12px; }
+.msg.user .bubble { background: #6366f1; color: white; border-radius: 12px 12px 4px 12px; margin-left: 20px; }
+.msg.ai   .bubble { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px 12px 12px 4px; color: #1e293b; }
+.msg.err  .bubble { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; border-radius: 12px 12px 12px 4px; }
+.bubble code   { font-family: monospace; font-size: 12px; background: #eef2ff; color: #6366f1; padding: 1px 5px; border-radius: 4px; }
+.bubble strong { font-weight: 600; }
+.typing-row { display: flex; gap: 4px; align-items: center; padding: 12px 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px 12px 12px 4px; width: fit-content; }
+.t-dot { width: 5px; height: 5px; background: #94a3b8; border-radius: 50%; animation: tdot 1.2s infinite; }
+.t-dot:nth-child(2){animation-delay:.2s} .t-dot:nth-child(3){animation-delay:.4s}
+@keyframes tdot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
+.quick-wrap { padding: 10px 14px; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
+.quick-title { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 7px; }
+.quick-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+.q-btn { font-family:'Inter',sans-serif; font-size: 11px; font-weight: 500; padding: 5px 11px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; color: #475569; cursor: pointer; transition: all 0.1s; }
+.q-btn:hover { background: #eef2ff; color: #6366f1; border-color: #c7d2fe; }
+.input-wrap { padding: 10px 14px; border-top: 1px solid #e2e8f0; flex-shrink: 0; }
+.input-row { display: flex; align-items: center; gap: 8px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 6px 6px 6px 12px; transition: border-color 0.15s; }
+.input-row:focus-within { border-color: #6366f1; background: white; }
+.chat-input { flex: 1; font-family:'Inter',sans-serif; font-size: 13px; background: transparent; border: none; outline: none; color: #1e293b; }
+.chat-input::placeholder { color: #94a3b8; }
+.send-btn { width: 32px; height: 32px; background: #6366f1; border: none; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; flex-shrink: 0; }
+.send-btn:hover { background: #4f46e5; transform: scale(1.05); }
+.send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.input-hint { font-size: 10px; color: #94a3b8; text-align: center; margin-top: 5px; }
+.overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 20px; }
+.modal { background: white; border-radius: 16px; box-shadow: 0 20px 50px rgba(0,0,0,0.15); width: 100%; max-width: 440px; padding: 30px; animation: modalIn 0.25s ease; }
+@keyframes modalIn { from{opacity:0;transform:scale(0.96) translateY(8px)} to{opacity:1;transform:none} }
+.modal-icon { width: 48px; height: 48px; background: #eef2ff; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 16px; }
+.modal-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.modal-sub   { font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 20px; }
+.modal-sub a { color: #6366f1; text-decoration: none; font-weight: 500; }
+.steps { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.step { display: flex; gap: 12px; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; align-items: flex-start; }
+.step-num { width: 22px; height: 22px; background: #6366f1; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+.step-text { font-size: 12px; color: #475569; line-height: 1.5; }
+.step-text strong { color: #1e293b; font-weight: 600; }
+.field-label { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 6px; display: block; }
+.field-input { width: 100%; font-family: monospace; font-size: 12px; padding: 11px 13px; background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 9px; color: #1e293b; outline: none; transition: border-color 0.15s; margin-bottom: 8px; }
+.field-input:focus { border-color: #6366f1; background: white; }
+.field-input.err { border-color: #ef4444; }
+.field-error { font-size: 11px; color: #dc2626; margin-bottom: 12px; display: none; }
+.field-error.show { display: block; }
+.remember { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+.remember input { accent-color: #6366f1; cursor: pointer; }
+.remember label { font-size: 12px; color: #64748b; cursor: pointer; }
+.modal-btn { width: 100%; padding: 12px; background: #6366f1; color: white; border: none; border-radius: 9px; font-size: 14px; font-weight: 600; cursor: pointer; font-family:'Inter',sans-serif; transition: background 0.15s; }
+.modal-btn:hover { background: #4f46e5; }
+.modal-note { font-size: 11px; color: #94a3b8; text-align: center; margin-top: 12px; line-height: 1.5; }
+.toasts { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; gap: 6px; z-index: 2000; pointer-events: none; }
+.toast { padding: 10px 18px; border-radius: 9px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.12); animation: toastIn 0.25s ease; white-space: nowrap; }
+@keyframes toastIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+.toast.success { background: #059669; color: white; }
+.toast.error   { background: #dc2626; color: white; }
+.toast.info    { background: #6366f1; color: white; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="header">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 18 18" fill="none">
+          <circle cx="9" cy="5.5" r="2.8" fill="white" opacity="0.95"/>
+          <circle cx="4"  cy="14" r="2"   fill="white" opacity="0.7"/>
+          <circle cx="14" cy="14" r="2"   fill="white" opacity="0.7"/>
+          <line x1="9" y1="8.3" x2="4"  y2="12" stroke="white" stroke-width="1.2" opacity="0.8"/>
+          <line x1="9" y1="8.3" x2="14" y2="12" stroke="white" stroke-width="1.2" opacity="0.8"/>
+        </svg>
+      </div>
+      <span class="logo-text">NetObs</span>
+      <span class="logo-badge">BETA</span>
+    </div>
+    <div class="divider"></div>
+    <div class="stat-chip"><div class="stat-dot green"></div><span class="stat-label">Healthy nodes</span><span class="stat-value green">47 / 49</span></div>
+    <div class="stat-chip"><div class="stat-dot amber"></div><span class="stat-label">Latency</span><span class="stat-value amber">142ms</span></div>
+    <div class="stat-chip"><div class="stat-dot red"></div><span class="stat-label">Error rate</span><span class="stat-value red">2.1%</span></div>
+    <div class="stat-chip"><div class="stat-dot green"></div><span class="stat-label">Requests/sec</span><span class="stat-value green">8,400</span></div>
+    <div class="header-right">
+      <button class="btn btn-outline" id="refresh-btn">↺ Refresh</button>
+      <button class="btn btn-outline api-btn" id="api-btn">
+        <div class="api-dot-btn" id="api-dot"></div>
+        <span id="api-label">Connect AI</span>
+      </button>
+    </div>
+  </header>
+
+  <aside class="sidebar">
+    <div class="nav-label">Views</div>
+    <div class="nav-item active" id="nav-topology">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><line x1="12" y1="8" x2="5.5" y2="16"/><line x1="12" y1="8" x2="18.5" y2="16"/></svg>
+      Service map
+    </div>
+    <div class="nav-item" id="nav-metrics">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5m-5 12v-4"/></svg>
+      Metrics
+    </div>
+    <div class="nav-item" id="nav-alerts">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      Alerts <span class="nav-count nc-red">3</span>
+    </div>
+    <div class="nav-label">Services</div>
+    <div class="nav-item" data-node="gateway"><div class="nav-dot" style="background:#f59e0b"></div>API Gateway</div>
+    <div class="nav-item" data-node="auth"><div class="nav-dot" style="background:#f59e0b"></div>Auth Service</div>
+    <div class="nav-item" data-node="db"><div class="nav-dot" style="background:#ef4444"></div>Primary DB</div>
+    <div class="nav-item" data-node="cache"><div class="nav-dot" style="background:#10b981"></div>Redis Cache</div>
+    <div class="nav-item" data-node="worker"><div class="nav-dot" style="background:#f59e0b"></div>Job Worker</div>
+    <div class="nav-item" data-node="cdn"><div class="nav-dot" style="background:#10b981"></div>CDN Edge</div>
+    <div class="nav-item" data-node="billing"><div class="nav-dot" style="background:#10b981"></div>Billing</div>
+    <div class="nav-label">Internet</div>
+    <div class="nav-item"><div class="nav-dot" style="background:#10b981"></div>Cloud Region <span class="nav-count nc-green" style="margin-left:auto">OK</span></div>
+    <div class="nav-item"><div class="nav-dot" style="background:#f59e0b"></div>CDN Edge <span class="nav-count nc-amber" style="margin-left:auto">Slow</span></div>
+  </aside>
+
+  <main class="main">
+    <div class="tabs">
+      <div class="tab active" id="tab-topology">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="3"/><circle cx="5" cy="19" r="3"/><circle cx="19" cy="19" r="3"/><line x1="12" y1="8" x2="5.5" y2="16"/><line x1="12" y1="8" x2="18.5" y2="16"/></svg>
+        Service Map
+      </div>
+      <div class="tab" id="tab-metrics">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M18 17V9M13 17V5m-5 12v-4"/></svg>
+        Metrics
+      </div>
+      <div class="tab" id="tab-alerts">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Alerts
+      </div>
+    </div>
+
+    <div class="panel active" id="panel-topology">
+      <div id="topo-wrap">
+        <svg id="topo-svg" viewBox="0 0 900 500" preserveAspectRatio="xMidYMid meet">
+          <defs>
+            <filter id="shadow"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.08"/></filter>
+            <filter id="shadow-hi"><feDropShadow dx="0" dy="4" stdDeviation="6" flood-opacity="0.15"/></filter>
+            <marker id="arr-ok"   viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#10b981" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.6"/></marker>
+            <marker id="arr-warn" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#f59e0b" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+            <marker id="arr-crit" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#ef4444" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker>
+          </defs>
+        </svg>
+        <div class="node-tooltip" id="node-tooltip">
+          <div class="tt-name" id="tt-name"></div>
+          <div class="tt-row"><span>Status</span><span class="tt-val" id="tt-status"></span></div>
+          <div class="tt-row"><span>Latency</span><span class="tt-val" id="tt-lat"></span></div>
+          <div class="tt-row"><span>Requests/s</span><span class="tt-val" id="tt-rps"></span></div>
+          <div class="tt-row"><span>CPU</span><span class="tt-val" id="tt-cpu"></span></div>
+        </div>
+        <div class="topo-hint">Click any service for AI analysis</div>
+        <div class="topo-legend">
+          <div class="leg"><div class="leg-dot" style="background:#10b981"></div>Healthy</div>
+          <div class="leg"><div class="leg-dot" style="background:#f59e0b"></div>Degraded</div>
+          <div class="leg"><div class="leg-dot" style="background:#ef4444"></div>Critical</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-metrics">
+      <div class="metrics-wrap">
+        <div class="section-title">Key metrics right now</div>
+        <div class="m-grid">
+          <div class="m-card">
+            <div class="m-card-top"><span class="m-card-label">Average latency</span><div class="m-card-icon" style="background:#fef3c7">⏱</div></div>
+            <div class="m-card-val" style="color:#d97706">142<span style="font-size:15px;font-weight:400">ms</span></div>
+            <div class="m-card-sub"><span class="trend-up">▲ 38ms</span>&nbsp;vs 1 hour ago</div>
+          </div>
+          <div class="m-card">
+            <div class="m-card-top"><span class="m-card-label">Requests per second</span><div class="m-card-icon" style="background:#d1fae5">⚡</div></div>
+            <div class="m-card-val" style="color:#059669">8,400</div>
+            <div class="m-card-sub"><span class="trend-dn">▲ 12%</span>&nbsp;above baseline</div>
+          </div>
+          <div class="m-card">
+            <div class="m-card-top"><span class="m-card-label">Error rate</span><div class="m-card-icon" style="background:#fee2e2">⚠️</div></div>
+            <div class="m-card-val" style="color:#dc2626">2.1<span style="font-size:15px;font-weight:400">%</span></div>
+            <div class="m-card-sub"><span class="trend-up">▲ 0.8%</span>&nbsp;SLO breached</div>
+          </div>
+          <div class="m-card">
+            <div class="m-card-top"><span class="m-card-label">Slowest 1% of requests</span><div class="m-card-icon" style="background:#fee2e2">🐢</div></div>
+            <div class="m-card-val" style="color:#dc2626">840<span style="font-size:15px;font-weight:400">ms</span></div>
+            <div class="m-card-sub"><span class="trend-up">▲ 310ms</span>&nbsp;spike</div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Latency and error rate over time</span><span class="card-sub">Last 6 hours</span></div>
+          <div class="chart-wrap"><canvas id="metricsChart"></canvas></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">AI risk score by service</span><span class="card-sub">Likelihood of failure in next 2 hours</span></div>
+          <div id="risk-rows"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel" id="panel-alerts">
+      <div class="alerts-wrap">
+        <div class="alerts-top">
+          <span class="alerts-heading">Active alerts</span>
+          <span class="alerts-meta">5 total · 2 critical</span>
+        </div>
+        <div id="alerts-list"></div>
+      </div>
+    </div>
+  </main>
+
+  <aside class="ai-panel">
+    <div class="ai-top">
+      <div class="ai-top-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M12 2a9 9 0 1 0 9 9"/><path d="M12 8v4l3 3"/><circle cx="18" cy="5" r="3" fill="#6366f1" stroke="none"/></svg>
+      </div>
+      <span class="ai-title">AI Assistant</span>
+      <span class="ai-badge ready" id="ai-badge">Ready</span>
+      <span class="ai-model">claude-sonnet-4-6</span>
+    </div>
+    <div class="risk-box">
+      <div class="risk-box-row">
+        <span class="risk-box-label">Cascade risk score</span>
+        <span class="risk-box-val">68 / 100</span>
+      </div>
+      <div class="risk-box-bar"><div class="risk-box-fill"></div></div>
+      <div class="risk-box-note">⚠ Database issue is spreading to other services</div>
+    </div>
+    <div class="ai-msgs" id="ai-msgs">
+      <div class="msg ai">
+        <div class="msg-who">AI Assistant</div>
+        <div class="bubble">Hi! I have scanned <strong>49 services</strong> and found an active problem.<br><br><strong>What is happening:</strong> Your Primary DB is overloaded (94% full). This is slowing down Auth Service, which is causing your API Gateway to return errors (2.1% error rate).<br><br><strong>Quick fix:</strong> Add a missing database index — takes about 3 minutes.<br><br>Click any service on the map, or use the quick buttons below.</div>
+      </div>
+    </div>
+    <div class="quick-wrap">
+      <div class="quick-title">Quick actions</div>
+      <div class="quick-grid" id="quick-grid"></div>
+    </div>
+    <div class="input-wrap">
+      <div class="input-row">
+        <input class="chat-input" id="chat-input" type="text" placeholder="Ask anything about your network..."/>
+        <button class="send-btn" id="send-btn" title="Send">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+        </button>
+      </div>
+      <div class="input-hint">Press Enter to send</div>
+    </div>
+  </aside>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<div class="overlay" id="modal">
+  <div class="modal">
+    <div class="modal-icon">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+    </div>
+    <div class="modal-title">Connect AI assistant</div>
+    <div class="modal-sub">NetObs uses Claude AI to explain what is happening in your network and how to fix it. You need a free Anthropic API key to get started.</div>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-text">Go to <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> and create a free account</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text">Click <strong>API Keys</strong> in the left menu, then <strong>Create Key</strong>, then copy it</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text">Paste your key below and click Activate</div></div>
+    </div>
+    <label class="field-label" for="key-input">Your API key</label>
+    <input class="field-input" id="key-input" type="password" placeholder="sk-ant-api03-..." autocomplete="off"/>
+    <div class="field-error" id="key-err">Please enter a valid key starting with sk-ant-</div>
+    <div class="remember">
+      <input type="checkbox" id="remember" checked/>
+      <label for="remember">Remember my key in this browser so I do not have to enter it again</label>
+    </div>
+    <button class="modal-btn" id="activate-btn">Activate AI assistant</button>
+    <div class="modal-note">Your key is only used to contact the Anthropic API directly from your browser. It is never sent to any other server. Typical cost: less than $0.05 per session.</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+'use strict';
+
+// ── State ──
+var API_KEY = '';
+
+// ── Helpers ──
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function toast(msg, type, dur) {
+  dur = dur || 3000;
+  var w = document.getElementById('toasts');
+  var el = document.createElement('div');
+  el.className = 'toast ' + (type || 'info');
+  el.textContent = msg;
+  w.appendChild(el);
+  setTimeout(function() {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(6px)';
+    el.style.transition = 'all 0.3s';
+    setTimeout(function() { el.remove(); }, 300);
+  }, dur);
+}
+
+// ── API Key ──
+function saveKey() {
+  var v = document.getElementById('key-input').value.trim();
+  if (!v.startsWith('sk-')) {
+    document.getElementById('key-input').classList.add('err');
+    document.getElementById('key-err').classList.add('show');
+    return;
+  }
+  API_KEY = v;
+  if (document.getElementById('remember').checked) {
+    try { localStorage.setItem('netobs-key', v); } catch(e) {}
+  }
+  document.getElementById('modal').style.display = 'none';
+  document.getElementById('api-dot').classList.add('on');
+  document.getElementById('api-label').textContent = 'AI Connected';
+  toast('AI assistant connected', 'success');
+}
+
+function showModal() {
+  document.getElementById('modal').style.display = 'flex';
+  setTimeout(function() { document.getElementById('key-input').focus(); }, 100);
+}
+
+// Restore saved key
+(function() {
+  try {
+    var k = localStorage.getItem('netobs-key');
+    if (k && k.startsWith('sk-')) {
+      API_KEY = k;
+      document.getElementById('key-input').value = k;
+      document.getElementById('modal').style.display = 'none';
+      document.getElementById('api-dot').classList.add('on');
+      document.getElementById('api-label').textContent = 'AI Connected';
+    }
+  } catch(e) {}
+})();
+
+document.getElementById('key-input').addEventListener('input', function() {
+  this.classList.remove('err');
+  document.getElementById('key-err').classList.remove('show');
+});
+document.getElementById('key-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') saveKey();
+});
+document.getElementById('activate-btn').addEventListener('click', saveKey);
+document.getElementById('api-btn').addEventListener('click', showModal);
+document.getElementById('refresh-btn').addEventListener('click', function() {
+  drawTopo(); renderAlerts(); drawRisks(); toast('Refreshed', 'success', 2000);
+});
+
+// ── Navigation ──
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+  document.querySelectorAll('.panel').forEach(function(p) { p.classList.remove('active'); });
+  var t = document.getElementById('tab-' + name);
+  var p = document.getElementById('panel-' + name);
+  if (t) t.classList.add('active');
+  if (p) p.classList.add('active');
+}
+
+// Wire up tabs
+['topology','metrics','alerts'].forEach(function(name) {
+  document.getElementById('tab-' + name).addEventListener('click', function() {
+    switchTab(name);
+  });
+});
+
+// Wire up nav items (views)
+document.getElementById('nav-topology').addEventListener('click', function() {
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  this.classList.add('active');
+  switchTab('topology');
+});
+document.getElementById('nav-metrics').addEventListener('click', function() {
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  this.classList.add('active');
+  switchTab('metrics');
+});
+document.getElementById('nav-alerts').addEventListener('click', function() {
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  this.classList.add('active');
+  switchTab('alerts');
+});
+
+// Wire up service nav items safely
+document.querySelectorAll('[data-node]').forEach(function(el) {
+  el.addEventListener('click', function() {
+    var id = this.getAttribute('data-node');
+    focusNode(id);
+  });
+});
+
+// ── Node data ──
+var NODES = {
+  cdn:      {label:'CDN Edge',     x:450,y:50,  status:'ok',  lat:'12ms', rps:'2,100',cpu:'22%'},
+  gateway:  {label:'API Gateway',  x:450,y:150, status:'warn',lat:'68ms', rps:'8,400',cpu:'61%'},
+  auth:     {label:'Auth Service', x:200,y:270, status:'warn',lat:'210ms',rps:'3,200',cpu:'89%'},
+  products: {label:'Products',     x:450,y:270, status:'ok',  lat:'24ms', rps:'2,800',cpu:'34%'},
+  billing:  {label:'Billing',      x:700,y:270, status:'ok',  lat:'31ms', rps:'1,400',cpu:'28%'},
+  cache:    {label:'Redis Cache',  x:150,y:390, status:'ok',  lat:'2ms',  rps:'6,100',cpu:'45%'},
+  db:       {label:'Primary DB',   x:450,y:410, status:'crit',lat:'480ms',rps:'1,900',cpu:'94%'},
+  replica:  {label:'DB Replica',   x:680,y:410, status:'ok',  lat:'18ms', rps:'800',  cpu:'20%'},
+  worker:   {label:'Job Worker',   x:240,y:460, status:'warn',lat:'n/a',  rps:'400',  cpu:'58%'}
+};
+
+var EDGES = [
+  ['cdn','gateway','ok'],['gateway','auth','warn'],['gateway','products','ok'],
+  ['gateway','billing','ok'],['auth','cache','ok'],['auth','db','crit'],
+  ['products','db','warn'],['billing','db','warn'],['db','replica','ok'],
+  ['worker','db','crit'],['worker','cache','ok']
+];
+
+var SC = {ok:'#10b981', warn:'#f59e0b', crit:'#ef4444'};
+var hiNode = null;
+
+function drawTopo() {
+  var svg = document.getElementById('topo-svg');
+  svg.innerHTML = svg.innerHTML.split('</defs>')[0] + '</defs>';
+
+  EDGES.forEach(function(edge) {
+    var a = edge[0], b = edge[1], st = edge[2];
+    var n1 = NODES[a], n2 = NODES[b];
+    var isHi = hiNode && (a === hiNode || b === hiNode);
+    var col = SC[st];
+    var l = document.createElementNS('http://www.w3.org/2000/svg','line');
+    l.setAttribute('x1', n1.x); l.setAttribute('y1', n1.y + 22);
+    l.setAttribute('x2', n2.x); l.setAttribute('y2', n2.y - 18);
+    l.setAttribute('stroke', isHi ? col : col + '55');
+    l.setAttribute('stroke-width', isHi ? '2' : '1');
+    l.setAttribute('marker-end', 'url(#arr-' + st + ')');
+    if (!isHi && st === 'ok') l.setAttribute('stroke-dasharray', '5 4');
+    svg.appendChild(l);
+  });
+
+  Object.keys(NODES).forEach(function(id) {
+    var n = NODES[id];
+    var isHi = id === hiNode;
+    var col = SC[n.status];
+    var g = document.createElementNS('http://www.w3.org/2000/svg','g');
+    g.style.cursor = 'pointer';
+
+    var rect = document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x', n.x - 68); rect.setAttribute('y', n.y - 20);
+    rect.setAttribute('width', 136); rect.setAttribute('height', 40);
+    rect.setAttribute('rx', 10);
+    rect.setAttribute('fill', isHi ? col + '18' : '#ffffff');
+    rect.setAttribute('stroke', isHi ? col : col + '66');
+    rect.setAttribute('stroke-width', isHi ? '2' : '1');
+    rect.setAttribute('filter', isHi ? 'url(#shadow-hi)' : 'url(#shadow)');
+    g.appendChild(rect);
+
+    var dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    dot.setAttribute('cx', n.x - 53); dot.setAttribute('cy', n.y);
+    dot.setAttribute('r', 5); dot.setAttribute('fill', col);
+    g.appendChild(dot);
+
+    var txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+    txt.setAttribute('x', n.x - 43); txt.setAttribute('y', n.y - 3);
+    txt.setAttribute('font-size', '12'); txt.setAttribute('font-family', "'Inter',sans-serif");
+    txt.setAttribute('fill', isHi ? '#1e293b' : '#475569');
+    txt.setAttribute('font-weight', isHi ? '600' : '400');
+    txt.textContent = n.label;
+    g.appendChild(txt);
+
+    var sub = document.createElementNS('http://www.w3.org/2000/svg','text');
+    sub.setAttribute('x', n.x - 43); sub.setAttribute('y', n.y + 11);
+    sub.setAttribute('font-size', '9.5'); sub.setAttribute('font-family', "'Inter',sans-serif");
+    sub.setAttribute('fill', col); sub.setAttribute('font-weight', '500');
+    sub.textContent = n.lat + ' · ' + n.rps + '/s';
+    g.appendChild(sub);
+
+    g.addEventListener('mouseenter', function(e) {
+      var tt = document.getElementById('node-tooltip');
+      var box = document.getElementById('topo-wrap').getBoundingClientRect();
+      tt.style.left = Math.min(e.clientX - box.left + 14, box.width - 180) + 'px';
+      tt.style.top  = Math.max(e.clientY - box.top  - 10, 8) + 'px';
+      tt.style.display = 'block';
+      document.getElementById('tt-name').textContent = n.label;
+      var statusText = n.status === 'ok' ? 'Healthy' : n.status === 'warn' ? 'Degraded' : 'Critical';
+      document.getElementById('tt-status').textContent = statusText;
+      document.getElementById('tt-status').style.color = col;
+      document.getElementById('tt-lat').textContent = n.lat;
+      document.getElementById('tt-rps').textContent = n.rps + '/s';
+      document.getElementById('tt-cpu').textContent = n.cpu;
+    });
+    g.addEventListener('mouseleave', function() {
+      document.getElementById('node-tooltip').style.display = 'none';
+    });
+    g.addEventListener('click', function() {
+      hiNode = hiNode === id ? null : id;
+      drawTopo();
+      if (hiNode) {
+        askAI('What is happening with ' + n.label + '? Its status is ' + n.status + ', latency is ' + n.lat + ', CPU is ' + n.cpu + '. What is wrong and what should I do?');
+      }
+    });
+    svg.appendChild(g);
+  });
+}
+
+function focusNode(id) {
+  if (!NODES[id]) { toast('Service not found', 'error'); return; }
+  hiNode = id;
+  switchTab('topology');
+  drawTopo();
+  var n = NODES[id];
+  setTimeout(function() {
+    askAI('What is happening with ' + n.label + '? Status: ' + n.status + ', latency: ' + n.lat + ', CPU: ' + n.cpu + '. What should I do?');
+  }, 80);
+}
+
+// ── Metrics Chart ──
+function drawChart() {
+  var ctx = document.getElementById('metricsChart');
+  if (!ctx) return;
+  var pts = 24;
+  var labels = [];
+  for (var i = 0; i < pts; i++) {
+    labels.push(i % 4 === 0 ? '-' + ((pts - 1 - i) * 15) + 'm' : '');
+  }
+  var lat = [], err = [];
+  for (var j = 0; j < pts; j++) {
+    lat.push(j < 16 ? 85 + Math.random() * 25 : 120 + Math.pow(j - 16, 1.8) * 3.5 + Math.random() * 18);
+    err.push(j < 18 ? 0.8 + Math.random() * 0.4 : 1.2 + (j - 18) * 0.22 + Math.random() * 0.15);
+  }
+  new Chart(ctx, {
+    type: 'line',
+    data: { labels: labels, datasets: [
+      {label:'Latency (ms)',data:lat,borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.07)',borderWidth:1.5,pointRadius:0,fill:true,tension:0.3,yAxisID:'y'},
+      {label:'Error rate (%)',data:err,borderColor:'#ef4444',backgroundColor:'rgba(239,68,68,0.07)',borderWidth:1.5,pointRadius:0,fill:true,tension:0.3,yAxisID:'y1',borderDash:[4,3]}
+    ]},
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#94a3b8',font:{size:10},maxRotation:0},grid:{color:'rgba(0,0,0,0.04)'},border:{color:'#e2e8f0'}},
+        y:{position:'left',ticks:{color:'#d97706',font:{size:10}},grid:{color:'rgba(0,0,0,0.04)'},border:{color:'#e2e8f0'}},
+        y1:{position:'right',ticks:{color:'#dc2626',font:{size:10}},grid:{drawOnChartArea:false},border:{color:'#e2e8f0'}}
+      }
+    }
+  });
+}
+
+// ── Risk bars ──
+var RISKS = [
+  {label:'Primary DB',   score:92, color:'#ef4444'},
+  {label:'Auth Service', score:74, color:'#f59e0b'},
+  {label:'Job Worker',   score:61, color:'#f59e0b'},
+  {label:'API Gateway',  score:55, color:'#f59e0b'},
+  {label:'Redis Cache',  score:38, color:'#10b981'},
+  {label:'CDN Edge',     score:12, color:'#10b981'}
+];
+
+function drawRisks() {
+  var el = document.getElementById('risk-rows');
+  if (!el) return;
+  el.innerHTML = RISKS.map(function(r) {
+    return '<div class="risk-row">' +
+      '<span class="risk-label">' + esc(r.label) + '</span>' +
+      '<div class="risk-track"><div class="risk-fill" style="width:' + r.score + '%;background:' + r.color + '"></div></div>' +
+      '<span class="risk-num" style="color:' + r.color + '">' + r.score + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+// ── Alerts ──
+var ALERTS = [
+  {sev:'crit', title:'Primary DB — connection pool full',    body:'94% of connections used up. Queries taking 480ms on average — 4 times slower than normal.',  ai:'Missing index on orders.order_date. Add it now: takes 3 min, cuts query time by 65%.',      time:'2m'},
+  {sev:'crit', title:'API Gateway — too many errors (4.2%)', body:'1 in 25 requests are failing. Caused by Auth Service timeouts. The target is under 0.5%.',    ai:'Auth Service CPU at 89% because DB is slow. Fix the DB index and this resolves itself.',     time:'5m'},
+  {sev:'warn', title:'Job Worker — falling behind',          body:'12,400 tasks backed up in the queue. Processing speed is down 22%.',                           ai:'Workers are waiting on the database. Will clear automatically once DB is fixed.',            time:'8m'},
+  {sev:'warn', title:'Redis Cache — running low on memory',  body:'78% of memory is used. The cache is starting to drop old data to make room.',                  ai:'Old session data is taking 34% of memory. Shorten session lifetime from 60 to 15 minutes.', time:'14m'},
+  {sev:'info',  title:'CDN — fewer cache hits than usual',   body:'Cache hit rate dropped from 84% to 61% after the last deployment.',                            ai:'A code change broke cache headers on /api/products. Check the recent deploy diff.',          time:'22m'}
+];
+
+function renderAlerts() {
+  var list = document.getElementById('alerts-list');
+  if (!list) return;
+  list.innerHTML = '';
+  ALERTS.forEach(function(a, idx) {
+    var el = document.createElement('div');
+    el.className = 'alert-card ' + a.sev;
+
+    var sevText = a.sev === 'crit' ? 'Critical' : a.sev === 'warn' ? 'Warning' : 'Info';
+    el.innerHTML =
+      '<div class="alert-top-row">' +
+        '<span class="sev-pill sev-' + a.sev + '">' + sevText + '</span>' +
+        '<span class="alert-title-text">' + esc(a.title) + '</span>' +
+        '<span class="alert-ago">' + a.time + ' ago</span>' +
+      '</div>' +
+      '<div class="alert-desc">' + esc(a.body) + '</div>' +
+      (a.ai ? '<div class="ai-tag">✦ ' + esc(a.ai) + '</div>' : '') +
+      '<div class="alert-btns">' +
+        '<button class="alert-btn primary" data-action="fix" data-idx="' + idx + '">Ask AI how to fix</button>' +
+        '<button class="alert-btn" data-action="impact" data-idx="' + idx + '">Show impact</button>' +
+        '<button class="alert-btn" data-action="ack" data-idx="' + idx + '">Acknowledge</button>' +
+      '</div>';
+
+    // Wire up buttons with addEventListener — no inline onclick
+    el.querySelectorAll('[data-action]').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var alertIdx = parseInt(this.getAttribute('data-idx'));
+        var action   = this.getAttribute('data-action');
+        var alert    = ALERTS[alertIdx];
+        if (action === 'fix')    askAI('How do I fix this issue: ' + alert.title + '. Details: ' + alert.body);
+        if (action === 'impact') askAI('What is the full impact and blast radius of this issue: ' + alert.title);
+        if (action === 'ack')    toast('Alert acknowledged', 'info');
+      });
+    });
+
+    list.appendChild(el);
+  });
+}
+
+// ── Quick actions ──
+var QUICK_ACTIONS = [
+  {label:'Root cause',      msg:'What is the root cause of current issues and how do I fix it?'},
+  {label:'Step by step fix',msg:'Give me exact commands to fix this step by step'},
+  {label:'What breaks next',msg:'What services will fail next if we do nothing?'},
+  {label:'Blast radius',    msg:'If the database goes down completely, what else fails?'},
+  {label:'Write summary',   msg:'Write a short incident summary I can share with my team'}
+];
+
+function buildQuickButtons() {
+  var grid = document.getElementById('quick-grid');
+  QUICK_ACTIONS.forEach(function(qa) {
+    var btn = document.createElement('button');
+    btn.className = 'q-btn';
+    btn.textContent = qa.label;
+    btn.addEventListener('click', function() { askAI(qa.msg); });
+    grid.appendChild(btn);
+  });
+}
+
+// ── AI ──
+var AI_PROMPT = 'You are a helpful AI assistant inside a network monitoring dashboard called NetObs.\n\n' +
+  'Current network state (demo data):\n' +
+  '- 49 services: 47 healthy, 2 degraded\n' +
+  '- Primary DB: CRITICAL — 94% connection pool, 480ms avg query, CPU 94%\n' +
+  '- Auth Service: DEGRADED — CPU 89%, 210ms latency, timeouts\n' +
+  '- API Gateway: DEGRADED — 4.2% error rate (target: 0.5%)\n' +
+  '- Job Worker: DEGRADED — 12,400 queued jobs, throughput down 22%\n' +
+  '- Redis Cache: WARNING — 78% memory\n' +
+  '- CDN: INFO — cache hit rate 61% (was 84%)\n\n' +
+  'Root cause: A missing index on orders.order_date causes slow queries, which fills the DB connection pool, ' +
+  'which starves Auth Service, which causes API Gateway errors, which backs up Job Worker.\n\n' +
+  'Write clear, friendly answers. Use plain English. Give specific commands or SQL when helpful. ' +
+  'Keep answers under 150 words unless asked for more detail.';
+
+function askAI(msg) {
+  if (!API_KEY) { showModal(); toast('Please connect your API key first', 'error'); return; }
+
+  var msgs  = document.getElementById('ai-msgs');
+  var badge = document.getElementById('ai-badge');
+  var btn   = document.getElementById('send-btn');
+
+  // User message
+  var ud = document.createElement('div');
+  ud.className = 'msg user';
+  ud.innerHTML = '<div class="msg-who">You</div><div class="bubble">' + esc(msg) + '</div>';
+  msgs.appendChild(ud);
+
+  // Typing indicator
+  var td = document.createElement('div');
+  td.className = 'msg ai';
+  td.innerHTML = '<div class="msg-who">AI Assistant</div><div class="typing-row"><div class="t-dot"></div><div class="t-dot"></div><div class="t-dot"></div></div>';
+  msgs.appendChild(td);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  badge.textContent = 'Thinking...';
+  badge.className = 'ai-badge thinking';
+  btn.disabled = true;
+
+  fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-calls': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1000,
+      system: AI_PROMPT,
+      messages: [{role: 'user', content: msg}]
+    })
+  })
+  .then(function(res) {
+    if (!res.ok) {
+      return res.json().catch(function() { return {}; }).then(function(e) {
+        var code = res.status;
+        var hint = '';
+        if (code === 401) hint = ' Your API key looks wrong. Click the AI Connected button at the top to update it.';
+        else if (code === 429) hint = ' Too many requests. Wait a moment and try again.';
+        else if (code >= 500) hint = ' Anthropic servers are busy. Try again in a few seconds.';
+        throw new Error('Something went wrong (error ' + code + ').' + hint);
+      });
+    }
+    return res.json();
+  })
+  .then(function(data) {
+    var text = (data.content && data.content[0] && data.content[0].text) ? data.content[0].text : 'No response received.';
+    td.remove();
+    var ad = document.createElement('div');
+    ad.className = 'msg ai';
+    var formatted = text
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/`([^`]+)`/g,'<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
+      .replace(/\n/g,'<br>');
+    ad.innerHTML = '<div class="msg-who">AI Assistant</div><div class="bubble">' + formatted + '</div>';
+    msgs.appendChild(ad);
+    badge.textContent = 'Ready';
+    badge.className = 'ai-badge ready';
+    msgs.scrollTop = msgs.scrollHeight;
+    btn.disabled = false;
+  })
+  .catch(function(err) {
+    td.remove();
+    var ed = document.createElement('div');
+    ed.className = 'msg err';
+    ed.innerHTML = '<div class="msg-who">Error</div><div class="bubble">' + esc(err.message) + '</div>';
+    msgs.appendChild(ed);
+    badge.textContent = 'Error';
+    badge.className = 'ai-badge error';
+    toast(err.message.slice(0, 80), 'error', 5000);
+    setTimeout(function() { badge.textContent = 'Ready'; badge.className = 'ai-badge ready'; }, 5000);
+    msgs.scrollTop = msgs.scrollHeight;
+    btn.disabled = false;
+  });
+}
+
+// Chat input
+document.getElementById('chat-input').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') {
+    var v = this.value.trim();
+    if (!v) return;
+    this.value = '';
+    askAI(v);
+  }
+});
+document.getElementById('send-btn').addEventListener('click', function() {
+  var input = document.getElementById('chat-input');
+  var v = input.value.trim();
+  if (!v) return;
+  input.value = '';
+  askAI(v);
+});
+
+// ── Init ──
+drawTopo();
+drawChart();
+drawRisks();
+renderAlerts();
+buildQuickButtons();
+</script>
+</body>
+</html>
