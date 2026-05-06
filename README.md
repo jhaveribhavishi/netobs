@@ -192,7 +192,7 @@ MIT — use it, fork it, build on it.
 
 ## Author
 
-Built by [Bhavishi Jhaveri](https://github.com/jhaveribhavishi) — network and cloud infrastructure engineer with 8+ years across hybrid cloud, Palo Alto/Panorama firewall architecture, network automation (Ansible, Python, Nautobot), and DRaaS/BaaS solutions at Opti9 and Lumen.
+Built by Bhavishi Jhaveri — technical customer engineer and cloud infrastructure architect with 8+ years helping enterprise customers design, automate, and operate hybrid cloud environments. Experience spans solution architecture, network automation (Ansible, Python, Nautobot), Palo Alto/Panorama security design, and cloud migration strategy. Passionate about translating complex infrastructure into products customers can actually use.
 
 [GitHub](https://github.com/jhaveribhavishi) · [LinkedIn](https://www.linkedin.com/in/bhavishi-jhaveri)
 
