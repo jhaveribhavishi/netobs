@@ -1,0 +1,70 @@
+{
+  "_comment": "Replace this with real data from your monitoring stack. See README for integration guides.",
+  "nodes": {
+    "gateway": {
+      "label": "API Gateway",
+      "status": "warn",
+      "lat": "68ms",
+      "rps": "8,400",
+      "cpu": "61%"
+    },
+    "auth": {
+      "label": "Auth Service",
+      "status": "warn",
+      "lat": "210ms",
+      "rps": "3,200",
+      "cpu": "89%"
+    },
+    "db": {
+      "label": "Primary DB",
+      "status": "crit",
+      "lat": "480ms",
+      "rps": "1,900",
+      "cpu": "94%"
+    },
+    "cache": {
+      "label": "Redis Cache",
+      "status": "ok",
+      "lat": "2ms",
+      "rps": "6,100",
+      "cpu": "45%"
+    },
+    "worker": {
+      "label": "Job Worker",
+      "status": "warn",
+      "lat": "n/a",
+      "rps": "400",
+      "cpu": "58%"
+    },
+    "cdn": {
+      "label": "CDN Edge",
+      "status": "ok",
+      "lat": "12ms",
+      "rps": "2,100",
+      "cpu": "22%"
+    }
+  },
+  "alerts": [
+    {
+      "sev": "crit",
+      "title": "Primary DB — connection pool critical",
+      "body": "94% of connections used up. Queries taking 480ms average.",
+      "ai": "Missing index on orders.order_date. Fix time: 3 min.",
+      "time": "2m"
+    },
+    {
+      "sev": "warn",
+      "title": "Job Worker — queue depth rising",
+      "body": "12,400 jobs queued. Throughput down 22%.",
+      "ai": "Downstream of DB issue. Will self-resolve once DB is fixed.",
+      "time": "8m"
+    }
+  ],
+  "summary": {
+    "healthy": 47,
+    "total": 49,
+    "latency": "142ms",
+    "error_rate": "2.1%",
+    "rps": "8,400"
+  }
+}
