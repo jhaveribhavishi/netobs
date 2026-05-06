@@ -75,7 +75,7 @@ Enterprise tools (Datadog, Dynatrace) are powerful but expensive and locked down
 
 ## Author
 
-Built by [Bhavishi Jhaveri](https://github.com/jhaveribhavishi) — network and cloud infrastructure engineer with 7+ years across hybrid cloud, Palo Alto/Panorama firewall architecture, network automation (Ansible, Python, Nautobot), and DRaaS/BaaS solutions.
+Built by [Bhavishi Jhaveri](https://github.com/jhaveribhavishi) — network and cloud infrastructure engineer with 8+ years across hybrid cloud, security architecture, network automation (Ansible, Python, Nautobot), and DRaaS/BaaS solutions.
 
 ## License
 
