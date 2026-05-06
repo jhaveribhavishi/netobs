@@ -810,14 +810,14 @@ function askAI(msg) {
   badge.className = 'ai-badge thinking';
   btn.disabled = true;
 
-  fetch('https://api.anthropic.com/v1/messages', {
+  fetch('https://netobs-proxy.bhavishij.workers.dev', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'x-api-key': API_KEY,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-calls': 'true',
-      'anthropic-beta': 'direct-browser-calls-2025-02-05'
+
+
+
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
